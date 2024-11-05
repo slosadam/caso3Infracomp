@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"name": "tallertypescript",
+			"path": "../../../Escritorio/tallertypescript"
+		},
+		{
+			"name": "Proyecto_01_G09",
+			"path": "../../../../Proyecto_01_G09"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"liveServer.settings.port": 5501
+	}
+}
