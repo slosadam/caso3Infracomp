@@ -18,6 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.MessageDigest;
@@ -57,17 +59,19 @@ public class Cliente {
 
         PublicKey publicKey = loadPublicKey("public.key");
 
-        byte[] retoBytes = new byte[32];
-        new SecureRandom().nextBytes(retoBytes); // Genero el reto
+        String retoBytes = "SOFIA ME CAE MUY MAL";
+         // Genero el reto
 
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        byte[] textoCifrado = cipher.doFinal(retoBytes);
+        byte[] textoCifrado = cipher.doFinal(retoBytes.getBytes());
         String textoCifradoBase64 = Base64.getEncoder().encodeToString(textoCifrado);
         escritor.println(textoCifradoBase64);
         
+
+
 		String retoDesencriptado = lector.readLine();
-        if (new String(retoBytes) == retoDesencriptado) {
+        if (new String(retoBytes).contains(retoDesencriptado)) {
             escritor.println("OK");
 
             BigInteger g = new BigInteger(lector.readLine()); //BitArray del BigInteger
@@ -112,16 +116,12 @@ public class Cliente {
 	}
     
     public static PublicKey loadPublicKey(String filename) throws Exception {
-        String keyContent = new String(Files.readAllBytes(Paths.get(filename)))
-                .replaceAll("\\n", "")
-                .replaceAll("\\r", "");
-                byte[] decodedKey = Base64.getDecoder().decode(keyContent);
-                BigInteger modulus = new BigInteger(1, decodedKey);
-                BigInteger exponent = BigInteger.valueOf(65537);
+            byte[] publicKeyBytes = Files.readAllBytes(Paths.get("/Users/juanpablorivera/Desktop/CASO3/caso3Infracomp/CASO3INFRACOMP/public.key"));
+            X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
+            return publicKey;
 
-                RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, exponent);
-                KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-                return keyFactory.generatePublic(spec);
     }
 
     public static ArrayList<BigInteger> crearKeySecretaCompartida(BigInteger g, BigInteger p, BigInteger Gx, PrintWriter escritor) {
