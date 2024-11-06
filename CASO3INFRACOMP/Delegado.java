@@ -47,61 +47,15 @@ public class Delegado implements Runnable {
         try (BufferedReader lector = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
              PrintWriter escritor = new PrintWriter(clientSocket.getOutputStream(), true)) {
             
-            handshake(lector, escritor);
+            boolean AnsHandhsake = handshake(lector, escritor);
+            if (AnsHandhsake == true) {}
 
-
-            String gYString = lector.readLine(); //lee la llave publica que envio el cliente
-            BigInteger Gy = new BigInteger(gYString);
-            String hexP = "00858386226071a5e62bff2586d6b7116c8895ce22ee6a5a392a667f47ed92cc811b286ea68f4ba12618a2bd6985daa740b7e821ee2c30a3c98186e4093014b652823cf1e33a6597f3bc0a3b18e95520aeec3b6fbd9895a47e73e82f8d12776f6df5408596e95e2105c8bba3a2d5d18c4287f841991d1df0fb25514a60130b3677";
-            BigInteger p = new BigInteger(hexP, 16); // hacemos p con el valor que nos dio en openssl
-            BigInteger g = BigInteger.valueOf(2);; // valor de g, es arbitrario
-            DHPrivateKey llavePrivMod = (DHPrivateKey) loadPrivateKey("path_to_private_key"); // Cargar la clave privada
-            BigInteger Gx = g.modPow(llavePrivMod.getX(), p); // G^x mod 
-            BigInteger sharedSecretKey = Gy.modPow(llavePrivMod.getX(), p);//llave compartida
-
-
-             // Derivar las claves simétrica y HMAC usando SHA-512
-             byte[] kBytes = sharedSecretKey.toByteArray();
-             MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
-             byte[] hash = sha512.digest(kBytes);
-
-            //El hash se divide en dos
-            byte[] symmetricKeyBytes = new byte[32]; // 256 bits para la clave simétrica
-            byte[] hmacKeyBytes = new byte[32]; // 256 bits para la clave HMAC
-            System.arraycopy(hash, 0, symmetricKeyBytes, 0, 32);
-            System.arraycopy(hash, 32, hmacKeyBytes, 0, 32);
-
-            // Crear las claves secretas
-            SecretKey symmetricKey = new SecretKeySpec(symmetricKeyBytes, "AES");
-            SecretKey hmacKey = new SecretKeySpec(hmacKeyBytes, "HmacSHA384");
 
             // Ahora puedes usar symmetricKey para cifrado y hmacKey para HMAC
-            System.out.println("Clave simétrica derivada: " + new BigInteger(1, symmetricKey.getEncoded()).toString(16));
-            System.out.println("Clave HMAC derivada: " + new BigInteger(1, hmacKey.getEncoded()).toString(16));
 
              // Leer datos encriptados y HMACs desde el cliente
-       String ivBase64 = lector.readLine();
-       byte[] iv = Base64.getDecoder().decode(ivBase64);
 
-       String encryptedUIDBase64 = lector.readLine();
-       byte[] encryptedUID = Base64.getDecoder().decode(encryptedUIDBase64);
 
-       String uidHmacBase64 = lector.readLine();
-       byte[] uidHmac = Base64.getDecoder().decode(uidHmacBase64);
-
-       String encryptedPackageIdBase64 = lector.readLine();
-       byte[] encryptedPackageId = Base64.getDecoder().decode(encryptedPackageIdBase64);
-
-       String packageIdHmacBase64 = lector.readLine();
-       byte[] packageIdHmac = Base64.getDecoder().decode(packageIdHmacBase64);
-
-       if (verificarYProcesarDatos(encryptedUID, uidHmac, encryptedPackageId, packageIdHmac, iv)) {
-        // Obtener estado del paquete y enviarlo al cliente encriptado
-        String estadoPaquete = "Procesado correctamente"; // Ejemplo de estado
-        enviarEstadoEncriptado(estadoPaquete, escritor, iv);
-    } else {
-        escritor.println("Error: HMAC no coincide o fallo de desencriptación.");
-    }
 
         }
         catch (Exception e) {
@@ -206,6 +160,7 @@ public class Delegado implements Runnable {
 
                     BigInteger Gx = g.modPow(llaveprivadamodulo.getX(), g);
 
+
                     Signature signature = Signature.getInstance("SHA1withRSA");
                     signature.initSign(privateKey);
                     signature.update(p.toByteArray());
@@ -218,6 +173,61 @@ public class Delegado implements Runnable {
                     escritor.println(hexP);
                     escritor.println(Gx);
                     escritor.println(firmado);
+
+                    String respuesta = lector.readLine();
+                    if (respuesta == "OK") {
+                        //LLEGA BIEN
+
+                        String gYString = lector.readLine(); //lee la llave publica que envio el cliente
+                        BigInteger Gy = new BigInteger(gYString);
+                        BigInteger sharedSecretKey = Gy.modPow(llaveprivadamodulo.getX(), p);//llave compartida
+                        byte[] kBytes = sharedSecretKey.toByteArray();
+                        MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
+                        byte[] hash = sha512.digest(kBytes);
+
+                        //El hash se divide en dos
+                        byte[] symmetricKeyBytes = new byte[32]; // 256 bits para la clave simétrica
+                        byte[] hmacKeyBytes = new byte[32]; // 256 bits para la clave HMAC
+                        System.arraycopy(hash, 0, symmetricKeyBytes, 0, 32);
+                        System.arraycopy(hash, 32, hmacKeyBytes, 0, 32);
+
+                        // Crear las claves secretas
+                        SecretKey symmetricKey = new SecretKeySpec(symmetricKeyBytes, "AES");
+                        SecretKey hmacKey = new SecretKeySpec(hmacKeyBytes, "HmacSHA384");
+
+                        //FALTA PRINTERA SYMETRIC KEY Y HMACKEY
+
+                        String ivBase64 = lector.readLine();
+                        String encryptedUIDBase64 = lector.readLine();
+                        String uidHmacBase64 = lector.readLine();
+                        String encryptedPackageIdBase64 = lector.readLine();
+                        String packageIdHmacBase64 = lector.readLine();
+
+                        byte[] iv = Base64.getDecoder().decode(ivBase64);
+
+                        byte[] encryptedUID = Base64.getDecoder().decode(encryptedUIDBase64);
+
+                        byte[] uidHmac = Base64.getDecoder().decode(uidHmacBase64);
+
+                        byte[] encryptedPackageId = Base64.getDecoder().decode(encryptedPackageIdBase64);
+
+                        byte[] packageIdHmac = Base64.getDecoder().decode(packageIdHmacBase64);
+
+                        if (verificarYProcesarDatos(encryptedUID, uidHmac, encryptedPackageId, packageIdHmac, iv)) {
+                        // Obtener estado del paquete y enviarlo al cliente encriptado
+                        String estadoPaquete = "Procesado correctamente"; // Ejemplo de estado
+                        enviarEstadoEncriptado(estadoPaquete, escritor, iv);
+                        } else {
+                        escritor.println("Error: HMAC no coincide o fallo de desencriptación.");
+                        }
+
+
+                        
+    
+                    }
+                    else {
+                        return false;
+                    }
                 }
             }   
             return true; // lo puse para que no genere error el metodo

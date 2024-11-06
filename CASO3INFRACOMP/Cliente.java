@@ -6,7 +6,9 @@ import java.net.Socket;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Signature;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Random;
 
 import javax.crypto.Cipher;
 import java.security.KeyFactory;
@@ -81,7 +83,23 @@ public class Cliente {
             verificador.update(Gx.toByteArray());
             
             if(verificador.verify(firma)) {
-                
+                escritor.println("OK");
+                //LLEGA BIEN NO RUN
+                ArrayList<BigInteger> devuelta =  crearKeySecretaCompartida(g, p, Gx, escritor);
+                BigInteger privateExponentY = devuelta.get(0);
+                BigInteger Gy = devuelta.get(1);
+                escritor.println(Gy.toString()); // aqui la llave publica del cliente se manda al servidor
+                sharedSecretKey = Gx.modPow(privateExponentY, p); // clave compartida secreta: K = (G^x)^y mod p
+                deriveKeys(sharedSecretKey);
+
+                Random random = new Random();
+                int UID = random.nextInt(100);
+                int package_id = random.nextInt(100);
+                enviarDatosCifrados(String.valueOf(UID), String.valueOf(package_id), escritor);
+                recibirYVerificarEstado(lector);
+            }
+            else {
+                escritor.println("ERROR");
             }
         }
         else {
@@ -106,20 +124,15 @@ public class Cliente {
                 return keyFactory.generatePublic(spec);
     }
 
-    public static BigInteger crearKeySecretaCompartida(BigInteger g, BigInteger p, BigInteger Gx, PrintWriter escritor) {
+    public static ArrayList<BigInteger> crearKeySecretaCompartida(BigInteger g, BigInteger p, BigInteger Gx, PrintWriter escritor) {
         SecureRandom yRandom = new SecureRandom();
-        privateExponentY = new BigInteger(256, yRandom); // el exponente tiene 256 bits
+        BigInteger privateExponentY = new BigInteger(256, yRandom); // el exponente tiene 256 bits
         // clave pública cliente: G^y mod p
         BigInteger Gy = g.modPow(privateExponentY, p); 
-        escritor.println(Gy.toString());// aqui la llave publica del cliente se manda al servidor
-        // clave compartida secreta: K = (G^x)^y mod p
-        sharedSecretKey = Gx.modPow(privateExponentY, p);
-
-        System.out.println("Clave pública del cliente: " + Gy);
-        System.out.println("Clave secreta compartida K = " + sharedSecretKey);
-
-        deriveKeys(sharedSecretKey);
-        return Gy; // Retorna clave pública del cliente
+        ArrayList<BigInteger> Devuelta = new ArrayList<>();
+        Devuelta.add(privateExponentY);
+        Devuelta.add(Gy);
+        return Devuelta;
 
     }
 
